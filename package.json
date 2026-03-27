@@ -1,0 +1,19 @@
+{
+  "name": "FullKMPExample",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "webApp",
+    "shared/build/dist/js/developmentLibrary"
+  ],
+  "scripts": {
+    "configure-shared-workspace:dev": "node scripts/configure-shared-workspace.mjs developmentLibrary",
+    "configure-shared-workspace:prod": "node scripts/configure-shared-workspace.mjs productionLibrary",
+    "build:web:dev": "./gradlew :shared:jsBrowserDevelopmentLibraryDistribution && npm run configure-shared-workspace:dev && npm install && npm run build",
+    "build:web:prod": "./gradlew :shared:jsBrowserProductionLibraryDistribution && npm run configure-shared-workspace:prod && npm install && npm run build",
+    "serve:web:dist": "./scripts/serve-web-dist.sh",
+    "start:web:dev": "./gradlew :shared:jsBrowserDevelopmentLibraryDistribution && npm run configure-shared-workspace:dev && npm install && npm run start",
+    "build": "cd webApp && npm run build",
+    "start": "cd webApp && npm run start"
+  }
+}
