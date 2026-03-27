@@ -1,9 +1,10 @@
 <form id="login-demo">
-    <heading id="heroTitle" text="Login compartilhado" align="center" />
+    <heading id="heroTitle" text="Login compartilhado" align="center" marginBottom="20" />
     <text
         id="heroDescription"
         text="Tela montada dinamicamente pela ordem do XML. Use demo@acme.com / 123456."
-        align="left" />
+        align="left"
+        marginBottom="16" />
     <field
         id="email"
         type="email"
@@ -12,7 +13,8 @@
         required="true"
         maxLength="80"
         pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
-        align="fill_width" />
+        align="fill_width"
+        marginBottom="12" />
     <field
         id="password"
         type="password"
@@ -21,14 +23,17 @@
         required="true"
         minLength="6"
         maxLength="32"
-        align="fill_width" />
+        align="fill_width"
+        marginBottom="12" />
     <field
         id="rememberMe"
         type="checkbox"
         label="Manter conectado"
         checked="true"
-        align="left" />
-    <status id="loginStatus" align="left" />
+        align="left"
+        marginBottom="16" />
+    <status id="loginStatus" align="left" marginBottom="12" />
+    <space id="beforeSubmit" height="4" width="0" />
     <button
         id="submit"
         action="submit"

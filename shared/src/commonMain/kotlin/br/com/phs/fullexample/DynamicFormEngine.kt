@@ -24,17 +24,28 @@ internal data class HeadingComponentDefinition(
     override val id: String,
     val text: String,
     val align: ComponentAlign,
+    val margin: ComponentMargin,
 ) : DynamicComponentDefinition
 
 internal data class TextComponentDefinition(
     override val id: String,
     val text: String,
     val align: ComponentAlign,
+    val margin: ComponentMargin,
 ) : DynamicComponentDefinition
 
 internal data class StatusComponentDefinition(
     override val id: String,
     val align: ComponentAlign,
+    val margin: ComponentMargin,
+) : DynamicComponentDefinition
+
+internal data class SpaceComponentDefinition(
+    override val id: String,
+    val width: Int,
+    val height: Int,
+    val align: ComponentAlign,
+    val margin: ComponentMargin,
 ) : DynamicComponentDefinition
 
 internal data class FieldComponentDefinition(
@@ -48,6 +59,7 @@ internal data class FieldComponentDefinition(
     val pattern: String?,
     val defaultChecked: Boolean,
     val align: ComponentAlign,
+    val margin: ComponentMargin,
 ) : DynamicComponentDefinition {
     val isTextInput: Boolean = type != FieldComponentType.CHECKBOX
     val isCheckbox: Boolean = type == FieldComponentType.CHECKBOX
@@ -58,6 +70,7 @@ internal data class ButtonComponentDefinition(
     val action: String,
     val label: String,
     val align: ComponentAlign,
+    val margin: ComponentMargin,
 ) : DynamicComponentDefinition
 
 internal enum class ComponentAlign {
@@ -66,6 +79,13 @@ internal enum class ComponentAlign {
     RIGHT,
     FILL_WIDTH,
 }
+
+internal data class ComponentMargin(
+    val left: Int,
+    val top: Int,
+    val right: Int,
+    val bottom: Int,
+)
 
 internal enum class FieldComponentType {
     TEXT,
@@ -147,8 +167,15 @@ data class DynamicComponentState(
     val isPassword: Boolean,
     val isButton: Boolean,
     val isStatus: Boolean,
+    val isSpace: Boolean,
     val maxLength: Int,
     val align: String,
+    val spaceWidth: Int,
+    val spaceHeight: Int,
+    val marginLeft: Int,
+    val marginTop: Int,
+    val marginRight: Int,
+    val marginBottom: Int,
 )
 
 open class DynamicFormEngine internal constructor(
@@ -205,8 +232,15 @@ open class DynamicFormEngine internal constructor(
                 isPassword = false,
                 isButton = false,
                 isStatus = false,
+                isSpace = false,
                 maxLength = 0,
                 align = component.align.name.lowercase(),
+                spaceWidth = 0,
+                spaceHeight = 0,
+                marginLeft = component.margin.left,
+                marginTop = component.margin.top,
+                marginRight = component.margin.right,
+                marginBottom = component.margin.bottom,
             )
 
             is TextComponentDefinition -> DynamicComponentState(
@@ -226,8 +260,15 @@ open class DynamicFormEngine internal constructor(
                 isPassword = false,
                 isButton = false,
                 isStatus = false,
+                isSpace = false,
                 maxLength = 0,
                 align = component.align.name.lowercase(),
+                spaceWidth = 0,
+                spaceHeight = 0,
+                marginLeft = component.margin.left,
+                marginTop = component.margin.top,
+                marginRight = component.margin.right,
+                marginBottom = component.margin.bottom,
             )
 
             is StatusComponentDefinition -> DynamicComponentState(
@@ -247,8 +288,43 @@ open class DynamicFormEngine internal constructor(
                 isPassword = false,
                 isButton = false,
                 isStatus = true,
+                isSpace = false,
                 maxLength = 0,
                 align = component.align.name.lowercase(),
+                spaceWidth = 0,
+                spaceHeight = 0,
+                marginLeft = component.margin.left,
+                marginTop = component.margin.top,
+                marginRight = component.margin.right,
+                marginBottom = component.margin.bottom,
+            )
+
+            is SpaceComponentDefinition -> DynamicComponentState(
+                id = component.id,
+                kind = "space",
+                text = "",
+                label = "",
+                placeholder = "",
+                value = "",
+                checked = false,
+                error = "",
+                actionId = "",
+                isVisible = true,
+                isEnabled = false,
+                isTextInput = false,
+                isCheckbox = false,
+                isPassword = false,
+                isButton = false,
+                isStatus = false,
+                isSpace = true,
+                maxLength = 0,
+                align = component.align.name.lowercase(),
+                spaceWidth = component.width,
+                spaceHeight = component.height,
+                marginLeft = component.margin.left,
+                marginTop = component.margin.top,
+                marginRight = component.margin.right,
+                marginBottom = component.margin.bottom,
             )
 
             is FieldComponentDefinition -> DynamicComponentState(
@@ -268,8 +344,15 @@ open class DynamicFormEngine internal constructor(
                 isPassword = component.type == FieldComponentType.PASSWORD,
                 isButton = false,
                 isStatus = false,
+                isSpace = false,
                 maxLength = component.maxLength ?: 0,
                 align = component.align.name.lowercase(),
+                spaceWidth = 0,
+                spaceHeight = 0,
+                marginLeft = component.margin.left,
+                marginTop = component.margin.top,
+                marginRight = component.margin.right,
+                marginBottom = component.margin.bottom,
             )
 
             is ButtonComponentDefinition -> DynamicComponentState(
@@ -289,8 +372,15 @@ open class DynamicFormEngine internal constructor(
                 isPassword = false,
                 isButton = true,
                 isStatus = false,
+                isSpace = false,
                 maxLength = 0,
                 align = component.align.name.lowercase(),
+                spaceWidth = 0,
+                spaceHeight = 0,
+                marginLeft = component.margin.left,
+                marginTop = component.margin.top,
+                marginRight = component.margin.right,
+                marginBottom = component.margin.bottom,
             )
         }
     }
@@ -411,7 +501,7 @@ open class DynamicFormEngine internal constructor(
 
 internal object DynamicFormXmlParser {
     private val formRegex = Regex("<form\\s+([^>]*)>([\\s\\S]*)</form>")
-    private val componentRegex = Regex("<(heading|text|status|field|button)\\s+([\\s\\S]*?)/>")
+    private val componentRegex = Regex("<(heading|text|status|space|field|button)\\s+([\\s\\S]*?)/>")
     private val attributeRegex = Regex("([a-zA-Z][a-zA-Z0-9]*)\\s*=\\s*\"([^\"]*)\"")
 
     fun parse(xml: String): DynamicFormDefinition {
@@ -441,17 +531,28 @@ internal object DynamicFormXmlParser {
                 id = attributes.required("id"),
                 text = attributes.required("text"),
                 align = attributes.align(),
+                margin = attributes.margin(),
             )
 
             "text" -> TextComponentDefinition(
                 id = attributes.required("id"),
                 text = attributes.required("text"),
                 align = attributes.align(),
+                margin = attributes.margin(),
             )
 
             "status" -> StatusComponentDefinition(
                 id = attributes.required("id"),
                 align = attributes.align(),
+                margin = attributes.margin(),
+            )
+
+            "space" -> SpaceComponentDefinition(
+                id = attributes.required("id"),
+                width = attributes["width"]?.toIntOrNull() ?: 0,
+                height = attributes["height"]?.toIntOrNull() ?: 0,
+                align = attributes.align(),
+                margin = attributes.margin(),
             )
 
             "field" -> parseField(attributes)
@@ -460,6 +561,7 @@ internal object DynamicFormXmlParser {
                 action = attributes.required("action"),
                 label = attributes.required("label"),
                 align = attributes.align(),
+                margin = attributes.margin(),
             )
 
             else -> error("Tag nao suportada: $tag")
@@ -486,6 +588,7 @@ internal object DynamicFormXmlParser {
             pattern = attributes["pattern"],
             defaultChecked = attributes.boolean("checked"),
             align = attributes.align(),
+            margin = attributes.margin(),
         )
     }
 
@@ -510,5 +613,15 @@ internal object DynamicFormXmlParser {
             "fill_width" -> ComponentAlign.FILL_WIDTH
             else -> error("Valor de align nao suportado: ${this["align"]}")
         }
+    }
+
+    private fun Map<String, String>.margin(): ComponentMargin {
+        val all = this["margin"]?.toIntOrNull() ?: 0
+        return ComponentMargin(
+            left = this["marginLeft"]?.toIntOrNull() ?: all,
+            top = this["marginTop"]?.toIntOrNull() ?: all,
+            right = this["marginRight"]?.toIntOrNull() ?: all,
+            bottom = this["marginBottom"]?.toIntOrNull() ?: all,
+        )
     }
 }

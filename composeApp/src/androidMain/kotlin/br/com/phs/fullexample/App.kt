@@ -4,11 +4,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -23,9 +26,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
@@ -33,9 +36,11 @@ import androidx.compose.ui.unit.dp
 fun App() {
     val engine = remember { AndroidDynamicFormEngine() }
     var formState by remember { mutableStateOf(engine.getState()) }
+    var components by remember { mutableStateOf(loadComponents(engine)) }
 
     fun refreshState() {
         formState = engine.getState()
+        components = loadComponents(engine)
     }
 
     MaterialTheme {
@@ -46,30 +51,46 @@ fun App() {
                     .windowInsetsPadding(WindowInsets.safeDrawing)
                     .padding(24.dp),
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    repeat(engine.getComponentsCount()) { index ->
-                        val component = engine.getComponentAt(index)
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    components.forEach { component ->
+                        val outerModifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                start = component.marginLeft.dp,
+                                top = component.marginTop.dp,
+                                end = component.marginRight.dp,
+                                bottom = component.marginBottom.dp,
+                            )
+
                         when {
-                            component.kind == "heading" -> Text(
-                                text = component.text,
-                                modifier = componentModifier(component.align),
-                                style = MaterialTheme.typography.headlineMedium,
-                                textAlign = componentTextAlign(component.align),
+                            component.isSpace -> Spacer(
+                                modifier = outerModifier.then(
+                                    Modifier
+                                        .width(component.spaceWidth.dp)
+                                        .height(component.spaceHeight.dp),
+                                ),
                             )
 
-                            component.kind == "text" -> Text(
-                                text = component.text,
-                                modifier = componentModifier(component.align),
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = componentTextAlign(component.align),
-                            )
+                            component.kind == "heading" -> AlignedRow(component.align, outerModifier) {
+                                Text(
+                                    text = component.text,
+                                    modifier = contentModifier(component.align),
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    textAlign = textAlign(component.align),
+                                )
+                            }
 
-                            component.isCheckbox -> {
+                            component.kind == "text" -> AlignedRow(component.align, outerModifier) {
+                                Text(
+                                    text = component.text,
+                                    modifier = contentModifier(component.align),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = textAlign(component.align),
+                                )
+                            }
+
+                            component.isCheckbox -> AlignedRow(component.align, outerModifier) {
                                 Row(
-                                    modifier = componentModifier(component.align),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
@@ -84,14 +105,14 @@ fun App() {
                                 }
                             }
 
-                            component.isTextInput -> {
+                            component.isTextInput -> AlignedRow(component.align, outerModifier) {
                                 OutlinedTextField(
                                     value = component.value,
                                     onValueChange = {
                                         engine.updateTextField(component.id, it)
                                         refreshState()
                                     },
-                                    modifier = componentModifier(component.align),
+                                    modifier = contentModifier(component.align),
                                     label = { Text(component.label) },
                                     placeholder = {
                                         if (component.placeholder.isNotBlank()) {
@@ -113,27 +134,31 @@ fun App() {
                                 )
                             }
 
-                            component.isStatus && component.isVisible -> Text(
-                                text = component.text,
-                                modifier = componentModifier(component.align),
-                                color = if (formState.isAuthenticated) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.error
-                                },
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = componentTextAlign(component.align),
-                            )
+                            component.isStatus && component.isVisible -> AlignedRow(component.align, outerModifier) {
+                                Text(
+                                    text = component.text,
+                                    modifier = contentModifier(component.align),
+                                    color = if (formState.isAuthenticated) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.error
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = textAlign(component.align),
+                                )
+                            }
 
-                            component.isButton -> Button(
-                                onClick = {
-                                    engine.triggerAction(component.actionId)
-                                    refreshState()
-                                },
-                                modifier = componentModifier(component.align),
-                                enabled = component.isEnabled,
-                            ) {
-                                Text(component.label)
+                            component.isButton -> AlignedRow(component.align, outerModifier) {
+                                Button(
+                                    onClick = {
+                                        engine.triggerAction(component.actionId)
+                                        refreshState()
+                                    },
+                                    modifier = contentModifier(component.align),
+                                    enabled = component.isEnabled,
+                                ) {
+                                    Text(component.label)
+                                }
                             }
                         }
                     }
@@ -143,16 +168,53 @@ fun App() {
     }
 }
 
-private fun componentModifier(align: String): Modifier {
-    return when (align) {
-        "center" -> Modifier.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally)
-        "right" -> Modifier.fillMaxWidth().wrapContentWidth(Alignment.End)
-        "fill_width" -> Modifier.fillMaxWidth()
-        else -> Modifier.fillMaxWidth().wrapContentWidth(Alignment.Start)
+private fun loadComponents(engine: AndroidDynamicFormEngine): List<DynamicComponentState> {
+    return List(engine.getComponentsCount()) { index ->
+        engine.getComponentAt(index)
     }
 }
 
-private fun componentTextAlign(align: String): TextAlign {
+@Composable
+private fun AlignedRow(
+    align: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    when (align) {
+        "center" -> Row(
+            modifier = modifier,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Spacer(modifier = Modifier.weight(1f))
+            content()
+            Spacer(modifier = Modifier.weight(1f))
+        }
+
+        "right" -> Row(
+            modifier = modifier,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Spacer(modifier = Modifier.weight(1f))
+            content()
+        }
+
+        else -> Row(
+            modifier = modifier,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            content()
+        }
+    }
+}
+
+private fun contentModifier(align: String): Modifier {
+    return when (align) {
+        "fill_width" -> Modifier.fillMaxWidth()
+        else -> Modifier
+    }
+}
+
+private fun textAlign(align: String): TextAlign {
     return when (align) {
         "center" -> TextAlign.Center
         "right" -> TextAlign.End
