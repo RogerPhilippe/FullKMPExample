@@ -1,0 +1,37 @@
+<form id="login-demo">
+    <heading id="heroTitle" text="Login compartilhado" align="center" />
+    <text
+        id="heroDescription"
+        text="Tela montada dinamicamente pela ordem do XML. Use demo@acme.com / 123456."
+        align="left" />
+    <field
+        id="email"
+        type="email"
+        label="E-mail"
+        placeholder="email"
+        required="true"
+        maxLength="80"
+        pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
+        align="fill_width" />
+    <field
+        id="password"
+        type="password"
+        label="Senha"
+        placeholder="Digite sua senha"
+        required="true"
+        minLength="6"
+        maxLength="32"
+        align="fill_width" />
+    <field
+        id="rememberMe"
+        type="checkbox"
+        label="Manter conectado"
+        checked="true"
+        align="left" />
+    <status id="loginStatus" align="left" />
+    <button
+        id="submit"
+        action="submit"
+        label="Entrar"
+        align="fill_width" />
+</form>

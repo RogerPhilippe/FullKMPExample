@@ -1,123 +1,124 @@
 import './UserRegistrationApp.css';
 
+import type { CSSProperties } from 'react';
 import { useState } from 'react';
-import { RegisteredUser, UserRegistrationScreen, WebUserRegistrationEngine } from 'shared';
+import { DynamicComponentState, WebDynamicFormEngine } from 'shared';
+
+function alignStyle(align: string): CSSProperties {
+  switch (align) {
+    case 'center':
+      return { alignSelf: 'center', textAlign: 'center' };
+    case 'right':
+      return { alignSelf: 'flex-end', textAlign: 'right' };
+    case 'fill_width':
+      return { width: '100%' };
+    default:
+      return { alignSelf: 'flex-start', textAlign: 'left' };
+  }
+}
 
 export function UserRegistrationApp() {
-  const [engine] = useState(() => new WebUserRegistrationEngine());
-  const [state, setState] = useState(() => engine.getState());
+  const [engine] = useState(() => new WebDynamicFormEngine());
+  const [components, setComponents] = useState<DynamicComponentState[]>(() =>
+    Array.from({ length: engine.getComponentsCount() }, (_, index) => engine.getComponentAt(index)),
+  );
 
-  const refreshState = () => {
-    setState(engine.getState());
+  const refresh = () => {
+    setComponents(Array.from({ length: engine.getComponentsCount() }, (_, index) => engine.getComponentAt(index)));
   };
 
   return (
     <main className="registration-shell">
       <section className="registration-card">
-        {state.screen === UserRegistrationScreen.USERS ? (
-          <>
-            <div className="header-row">
-              <div>
-                <p className="eyebrow">KMP Shared</p>
-                <h1>Usuarios Cadastrados</h1>
+        <p className="eyebrow">KMP Shared XML</p>
+
+        {components.map((component) => {
+          if (!component.isVisible) {
+            return null;
+          }
+
+          if (component.kind === 'heading') {
+            return <h1 key={component.id} style={alignStyle(component.align)}>{component.text}</h1>;
+          }
+
+          if (component.kind === 'text') {
+            return <p key={component.id} style={alignStyle(component.align)}>{component.text}</p>;
+          }
+
+          if (component.isCheckbox) {
+            return (
+              <label
+                key={component.id}
+                style={{
+                  ...alignStyle(component.align),
+                  alignItems: 'center',
+                  display: 'flex',
+                  flexDirection: 'row',
+                  gap: '0.75rem',
+                  width: component.align === 'fill_width' ? '100%' : 'fit-content',
+                }}
+              >
+                <input
+                  checked={component.checked}
+                  onChange={(event) => {
+                    engine.updateCheckboxField(component.id, event.target.checked);
+                    refresh();
+                  }}
+                  style={{ width: 'auto' }}
+                  type="checkbox"
+                />
+                <span>{component.label}</span>
+              </label>
+            );
+          }
+
+          if (component.isTextInput) {
+            return (
+              <label key={component.id} style={alignStyle(component.align)}>
+                <span>{component.label}</span>
+                <input
+                  maxLength={component.maxLength > 0 ? component.maxLength : undefined}
+                  onChange={(event) => {
+                    engine.updateTextField(component.id, event.target.value);
+                    refresh();
+                  }}
+                  placeholder={component.placeholder || component.label}
+                  type={component.isPassword ? 'password' : 'text'}
+                  value={component.value}
+                />
+                {component.error && <small className="status-message">{component.error}</small>}
+              </label>
+            );
+          }
+
+          if (component.isStatus) {
+            return (
+              <p className="status-message" key={component.id} style={alignStyle(component.align)}>
+                {component.text}
+              </p>
+            );
+          }
+
+          if (component.isButton) {
+            return (
+              <div className="actions-row" key={component.id} style={alignStyle(component.align)}>
+                <button
+                  className="primary-button"
+                  disabled={!component.isEnabled}
+                  onClick={() => {
+                    engine.triggerAction(component.actionId);
+                    refresh();
+                  }}
+                  type="button"
+                >
+                  {component.label}
+                </button>
               </div>
+            );
+          }
 
-              <button
-                className="secondary-button"
-                onClick={() => {
-                  engine.openRegister();
-                  refreshState();
-                }}
-                type="button"
-              >
-                Cadastrar
-              </button>
-            </div>
-
-            {state.message && <p className="status-message">{state.message}</p>}
-
-            {state.users.length === 0 ? (
-              <div className="empty-state">Nenhum usuario cadastrado.</div>
-            ) : (
-              <div className="users-grid">
-                {state.users.map((user: RegisteredUser) => (
-                  <article className="user-card" key={`${user.email}-${user.phone}`}>
-                    <strong>{user.name}</strong>
-                    <span>{user.email}</span>
-                    <span>{user.phone}</span>
-                  </article>
-                ))}
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <p className="eyebrow">KMP Shared</p>
-            <h1>{state.title}</h1>
-
-            <label>
-              <span>Nome</span>
-              <input
-                onChange={(event) => {
-                  engine.updateName(event.target.value);
-                  refreshState();
-                }}
-                type="text"
-                value={state.name}
-              />
-            </label>
-
-            <label>
-              <span>E-mail</span>
-              <input
-                onChange={(event) => {
-                  engine.updateEmail(event.target.value);
-                  refreshState();
-                }}
-                type="email"
-                value={state.email}
-              />
-            </label>
-
-            <label>
-              <span>Telefone</span>
-              <input
-                onChange={(event) => {
-                  engine.updatePhone(event.target.value);
-                  refreshState();
-                }}
-                type="tel"
-                value={state.phone}
-              />
-            </label>
-
-            {state.message && <p className="status-message">{state.message}</p>}
-
-            <div className="actions-row">
-              <button
-                className="primary-button"
-                onClick={() => {
-                  engine.saveUser();
-                  refreshState();
-                }}
-                type="button"
-              >
-                Salvar
-              </button>
-
-              <button
-                className="secondary-button"
-                onClick={() => {
-                  engine.openUsers();
-                  refreshState();
-                }}
-                type="button"
-              >
-                Usuarios
-              </button>
-            </div>
-          </>
-        )}
+          return null;
+        })}
       </section>
     </main>
   );

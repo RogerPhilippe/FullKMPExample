@@ -1,165 +1,181 @@
 import SwiftUI
 import Shared
 
-struct UserRow: Identifiable {
+struct DynamicComponentRow: Identifiable {
     let id: String
-    let name: String
-    let email: String
-    let phone: String
+    let kind: String
+    let text: String
+    let label: String
+    let placeholder: String
+    let value: String
+    let checked: Bool
+    let error: String
+    let actionId: String
+    let isVisible: Bool
+    let isEnabled: Bool
+    let isTextInput: Bool
+    let isCheckbox: Bool
+    let isPassword: Bool
+    let isButton: Bool
+    let isStatus: Bool
+    let align: String
 }
 
 @MainActor
-final class RegistrationViewModel: ObservableObject {
-    private let engine = IosUserRegistrationEngine()
+final class DynamicFormViewModel: ObservableObject {
+    private let engine = IosDynamicFormEngine()
 
-    @Published var state: UserRegistrationState
-    @Published var users: [UserRow]
+    @Published var state: DynamicFormState
+    @Published var components: [DynamicComponentRow]
 
     init() {
         self.state = engine.getState()
-        self.users = []
+        self.components = []
         refresh()
     }
 
-    func updateName(_ value: String) {
-        engine.updateName(value: value)
+    func updateText(id: String, value: String) {
+        engine.updateTextField(componentId: id, value: value)
         refresh()
     }
 
-    func updateEmail(_ value: String) {
-        engine.updateEmail(value: value)
+    func updateCheckbox(id: String, checked: Bool) {
+        engine.updateCheckboxField(componentId: id, checked: checked)
         refresh()
     }
 
-    func updatePhone(_ value: String) {
-        engine.updatePhone(value: value)
+    func trigger(actionId: String) {
+        engine.triggerAction(actionId: actionId)
         refresh()
     }
 
-    func saveUser() {
-        engine.saveUser()
-        refresh()
-    }
-
-    func openUsers() {
-        engine.openUsers()
-        refresh()
-    }
-
-    func openRegister() {
-        engine.openRegister()
-        refresh()
+    func component(for id: String) -> DynamicComponentRow? {
+        components.first(where: { $0.id == id })
     }
 
     private func refresh() {
         state = engine.getState()
-        users = (0..<Int(engine.getUsersCount())).map { index in
-            let user = engine.getUserAt(index: Int32(index))
-            return UserRow(
-                id: "\(user.email)-\(user.phone)",
-                name: user.name,
-                email: user.email,
-                phone: user.phone
+        components = (0..<Int(engine.getComponentsCount())).map { index in
+            let component = engine.getComponentAt(index: Int32(index))
+            return DynamicComponentRow(
+                id: component.id,
+                kind: component.kind,
+                text: component.text,
+                label: component.label,
+                placeholder: component.placeholder,
+                value: component.value,
+                checked: component.checked,
+                error: component.error,
+                actionId: component.actionId,
+                isVisible: component.isVisible,
+                isEnabled: component.isEnabled,
+                isTextInput: component.isTextInput,
+                isCheckbox: component.isCheckbox,
+                isPassword: component.isPassword,
+                isButton: component.isButton,
+                isStatus: component.isStatus,
+                align: component.align
             )
         }
     }
 }
 
 struct ContentView: View {
-    @StateObject private var viewModel = RegistrationViewModel()
+    @StateObject private var viewModel = DynamicFormViewModel()
 
     var body: some View {
         NavigationStack {
-            Group {
-                if viewModel.state.isUsersScreen {
-                    usersScreen
-                } else {
-                    registerScreen
-                }
-            }
-            .navigationTitle(viewModel.state.isUsersScreen ? "Usuarios" : "Cadastro")
-            .padding()
-        }
-    }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(viewModel.components) { component in
+                        if !component.isVisible {
+                            EmptyView()
+                        } else if component.kind == "heading" {
+                            Text(component.text)
+                                .font(.largeTitle.bold())
+                                .frame(maxWidth: component.align == "fill_width" ? .infinity : nil, alignment: swiftUIAlignment(component.align))
+                        } else if component.kind == "text" {
+                            Text(component.text)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: component.align == "fill_width" ? .infinity : nil, alignment: swiftUIAlignment(component.align))
+                        } else if component.isCheckbox {
+                            Toggle(
+                                component.label,
+                                isOn: Binding(
+                                    get: { viewModel.component(for: component.id)?.checked ?? false },
+                                    set: { viewModel.updateCheckbox(id: component.id, checked: $0) }
+                                )
+                            )
+                            .frame(maxWidth: component.align == "fill_width" ? .infinity : nil, alignment: swiftUIAlignment(component.align))
+                        } else if component.isPassword {
+                            VStack(alignment: .leading, spacing: 8) {
+                                SecureField(
+                                    component.placeholder.isEmpty ? component.label : component.placeholder,
+                                    text: Binding(
+                                        get: { viewModel.component(for: component.id)?.value ?? "" },
+                                        set: { viewModel.updateText(id: component.id, value: $0) }
+                                    )
+                                )
+                                .textFieldStyle(.roundedBorder)
 
-    private var registerScreen: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Cadastro de Usuarios")
-                .font(.largeTitle.bold())
+                                if let latest = viewModel.component(for: component.id), !latest.error.isEmpty {
+                                    Text(latest.error)
+                                        .font(.footnote)
+                                        .foregroundStyle(.red)
+                                }
+                            }
+                            .frame(maxWidth: component.align == "fill_width" ? .infinity : nil, alignment: swiftUIAlignment(component.align))
+                        } else if component.isTextInput {
+                            VStack(alignment: .leading, spacing: 8) {
+                                TextField(
+                                    component.placeholder.isEmpty ? component.label : component.placeholder,
+                                    text: Binding(
+                                        get: { viewModel.component(for: component.id)?.value ?? "" },
+                                        set: { viewModel.updateText(id: component.id, value: $0) }
+                                    )
+                                )
+                                .textInputAutocapitalization(.never)
+                                .keyboardType(component.id == "email" ? .emailAddress : .default)
+                                .textFieldStyle(.roundedBorder)
 
-            TextField("Nome", text: Binding(
-                get: { viewModel.state.name },
-                set: viewModel.updateName
-            ))
-            .textFieldStyle(.roundedBorder)
-
-            TextField("E-mail", text: Binding(
-                get: { viewModel.state.email },
-                set: viewModel.updateEmail
-            ))
-            .textInputAutocapitalization(.never)
-            .keyboardType(.emailAddress)
-            .textFieldStyle(.roundedBorder)
-
-            TextField("Telefone", text: Binding(
-                get: { viewModel.state.phone },
-                set: viewModel.updatePhone
-            ))
-            .keyboardType(.phonePad)
-            .textFieldStyle(.roundedBorder)
-
-            if !viewModel.state.message.isEmpty {
-                Text(viewModel.state.message)
-                    .foregroundStyle(.indigo)
-            }
-
-            HStack(spacing: 12) {
-                Button("Salvar", action: viewModel.saveUser)
-                    .buttonStyle(.borderedProminent)
-
-                Button("Usuarios", action: viewModel.openUsers)
-                    .buttonStyle(.bordered)
-            }
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    private var usersScreen: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Usuarios Cadastrados")
-                    .font(.largeTitle.bold())
-
-                Spacer()
-
-                Button("Cadastrar", action: viewModel.openRegister)
-                    .buttonStyle(.borderedProminent)
-            }
-
-            if !viewModel.state.message.isEmpty {
-                Text(viewModel.state.message)
-                    .foregroundStyle(.indigo)
-            }
-
-            if viewModel.users.isEmpty {
-                ContentUnavailableView("Nenhum usuario cadastrado.", systemImage: "person.crop.circle.badge.plus")
-            } else {
-                List(viewModel.users) { user in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(user.name)
-                            .font(.headline)
-                        Text(user.email)
-                            .foregroundStyle(.secondary)
-                        Text(user.phone)
-                            .foregroundStyle(.secondary)
+                                if let latest = viewModel.component(for: component.id), !latest.error.isEmpty {
+                                    Text(latest.error)
+                                        .font(.footnote)
+                                        .foregroundStyle(.red)
+                                }
+                            }
+                            .frame(maxWidth: component.align == "fill_width" ? .infinity : nil, alignment: swiftUIAlignment(component.align))
+                        } else if component.isStatus {
+                            Text(component.text)
+                                .foregroundStyle(viewModel.state.isAuthenticated ? .green : .red)
+                                .frame(maxWidth: component.align == "fill_width" ? .infinity : nil, alignment: swiftUIAlignment(component.align))
+                        } else if component.isButton {
+                            Button(action: { viewModel.trigger(actionId: component.actionId) }) {
+                                Text(component.label)
+                                    .frame(maxWidth: component.align == "fill_width" ? .infinity : nil)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(!component.isEnabled)
+                            .frame(maxWidth: component.align == "fill_width" ? .infinity : nil, alignment: swiftUIAlignment(component.align))
+                        }
                     }
-                    .padding(.vertical, 4)
                 }
-                .listStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding()
             }
+            .navigationTitle("Login")
         }
+    }
+}
+
+private func swiftUIAlignment(_ align: String) -> Alignment {
+    switch align {
+    case "center":
+        return .center
+    case "right":
+        return .trailing
+    default:
+        return .leading
     }
 }
 
