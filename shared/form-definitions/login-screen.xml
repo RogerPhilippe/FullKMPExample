@@ -25,13 +25,13 @@
         maxLength="32"
         align="fill_width"
         marginBottom="12" />
-    <status id="loginStatus" align="left" marginBottom="12" />
-    <space id="beforeSubmit" height="4" width="0" />
     <button
         id="submit"
         action="submit"
         label="Entrar"
         align="fill_width" />
+    <space id="beforeSubmit" height="4" width="0" />
+    <status id="loginStatus" align="left" marginBottom="12" />
     <field
         id="rememberMe"
         type="checkbox"
