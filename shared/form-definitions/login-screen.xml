@@ -25,13 +25,6 @@
         maxLength="32"
         align="fill_width"
         marginBottom="12" />
-    <field
-        id="rememberMe"
-        type="checkbox"
-        label="Manter conectado"
-        checked="true"
-        align="left"
-        marginBottom="16" />
     <status id="loginStatus" align="left" marginBottom="12" />
     <space id="beforeSubmit" height="4" width="0" />
     <button
@@ -39,4 +32,11 @@
         action="submit"
         label="Entrar"
         align="fill_width" />
+    <field
+        id="rememberMe"
+        type="checkbox"
+        label="Manter conectado"
+        checked="true"
+        align="left"
+        marginBottom="16" />
 </form>

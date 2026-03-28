@@ -1,5 +1,7 @@
 package br.com.phs.fullexample
 
+import br.com.phs.fullexample.dynamicform.sample.BundledSampleLoginFormSource
+import br.com.phs.fullexample.dynamicform.sample.SampleLoginActionHandler
 import kotlin.js.ExperimentalJsExport
 import kotlin.js.JsExport
 
